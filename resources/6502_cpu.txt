@@ -11,7 +11,7 @@
 #
 # Written by
 #   John West       (john@ucc.gu.uwa.edu.au)
-#   Marko Mäkelä    (msmakela@kruuna.helsinki.fi)
+#   Marko M?kel?    (msmakela@kruuna.helsinki.fi)
 #
 #
 # $Log: 64doc,v $
