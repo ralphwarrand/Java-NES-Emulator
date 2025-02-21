@@ -1,6 +1,6 @@
-import nes.cpu.CPU;
-import nes.Memory;
-import nes.MemoryViewer;
+import nes.emu.CPU;
+import nes.emu.Memory;
+import nes.emu.MemoryViewer;
 
 import java.io.*;
 import java.util.*;
@@ -70,7 +70,7 @@ public class Main {
                 memoryViewer.updateMemory();
 
                 // Introduce a small delay for readability in GUI
-               Thread.sleep(0); // Adjust for testing
+               Thread.sleep(50); // Adjust for testing
             }
 
             System.out.println("\n✅ CPU Execution Matches Reference Log!");

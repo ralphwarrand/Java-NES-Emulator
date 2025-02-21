@@ -1,6 +1,4 @@
-package nes.cpu;
-
-import nes.Memory;
+package nes.emu;
 
 public class CPU {
 

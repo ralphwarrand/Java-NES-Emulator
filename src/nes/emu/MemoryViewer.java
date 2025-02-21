@@ -1,4 +1,4 @@
-package nes;
+package nes.emu;
 
 import javax.swing.*;
 import java.awt.*;
@@ -7,7 +7,7 @@ public class MemoryViewer {
     private final Memory memory;
     private JTextArea textArea;
     private JScrollPane scrollPane;
-    private byte[] previousMemoryState = new byte[0x10000]; // Store previous memory state
+    private final byte[] previousMemoryState = new byte[0x10000]; // Store previous memory state
 
     public MemoryViewer(Memory memory) {
         this.memory = memory;
@@ -51,7 +51,6 @@ public class MemoryViewer {
 
                 for (int i = 0; i < bytesPerRow; i++) {
                     int effectiveAddr = addr + i;
-                    if (effectiveAddr > 0xFFFF) break;
 
                     int value = memory.read(effectiveAddr);
                     boolean changed = previousMemoryState[effectiveAddr] != (byte) value;
@@ -69,7 +68,6 @@ public class MemoryViewer {
 
                 for (int i = 0; i < bytesPerRow; i++) {
                     int effectiveAddr = addr + i;
-                    if (effectiveAddr > 0xFFFF) break;
 
                     int value = memory.read(effectiveAddr);
                     char ascii = (value >= 32 && value <= 126) ? (char) value : '.';
