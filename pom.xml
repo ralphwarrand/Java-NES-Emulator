@@ -8,10 +8,12 @@
   <groupId>com.example</groupId>
   <artifactId>java-nes-emulator</artifactId>
   <version>1.0-SNAPSHOT</version>
+
   <properties>
-    <!-- Use whichever version of Java you prefer -->
-    <maven.compiler.source>23</maven.compiler.source>
-    <maven.compiler.target>23</maven.compiler.target>
+    <!-- Set the source encoding -->
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <maven.compiler.source>17</maven.compiler.source>
+    <maven.compiler.target>17</maven.compiler.target>
   </properties>
 
   <dependencies>
@@ -33,6 +35,15 @@
 
   <build>
     <plugins>
+      <!-- Configure the Maven Resources Plugin to use UTF-8 -->
+      <plugin>
+        <artifactId>maven-resources-plugin</artifactId>
+        <version>3.3.1</version>
+        <configuration>
+          <encoding>${project.build.sourceEncoding}</encoding>
+        </configuration>
+      </plugin>
+
       <!-- Maven Surefire plugin to run tests -->
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
