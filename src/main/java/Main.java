@@ -1,6 +1,6 @@
-import nes.emu.CPU;
-import nes.emu.Memory;
-import nes.emu.MemoryViewer;
+import nes.CPU;
+import nes.Memory;
+import nes.gui.MemoryViewer;
 
 import java.io.*;
 import java.util.*;

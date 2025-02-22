@@ -1,10 +1,10 @@
-package nes.test.cpu;
+package nes;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
-import nes.emu.CPU;
-import nes.emu.Memory;
+import nes.CPU;
+import nes.Memory;
 
 import java.io.BufferedReader;
 import java.io.FileReader;

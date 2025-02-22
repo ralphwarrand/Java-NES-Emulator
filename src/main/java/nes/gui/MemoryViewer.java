@@ -1,4 +1,6 @@
-package nes.emu;
+package nes.gui;
+
+import nes.Memory;
 
 import javax.swing.*;
 import java.awt.*;

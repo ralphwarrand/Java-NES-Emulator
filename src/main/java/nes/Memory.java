@@ -1,4 +1,4 @@
-package nes.emu;
+package nes;
 
 import java.io.IOException;
 import java.nio.file.Files;

@@ -1,4 +1,4 @@
-package nes.emu;
+package nes;
 
 import java.util.HashMap;
 import java.util.Map;

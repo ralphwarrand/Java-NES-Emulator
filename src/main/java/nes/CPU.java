@@ -1,4 +1,4 @@
-package nes.emu;
+package nes;
 
 public class CPU {
 
@@ -728,7 +728,7 @@ public class CPU {
         }
 
         if (!pcUpdated) {
-            PC += instructionSize;
+            PC += instructionSize; // Advance Program Counter based on inst size
         }
     }
 }
