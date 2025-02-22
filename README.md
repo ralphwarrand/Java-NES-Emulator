@@ -23,8 +23,8 @@ A Java-based NES emulator built with Maven. This project aims to faithfully recr
 1. **Clone the repository:**
 
    ```bash
-   git clone https://github.com/yourusername/nes-emulator.git
-   cd nes-emulator
+   git clone https://github.com/ralphwarrand/java-nes-emulator.git
+   cd java-nes-emulator
    ```
 2. **Build the project using Maven:**
    
