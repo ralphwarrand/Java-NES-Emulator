@@ -34,6 +34,13 @@ public class Memory {
         if (prgSize == 16 * 1024) {
             System.arraycopy(prgRom, 0, prgRom, 16 * 1024, 16 * 1024);
         }
+
+        // Initialize APU/I/O registers with expected default values.
+        apuIoRegisters[0x15] = 0xFF; // initialize $4015 to FF
+        apuIoRegisters[0x04] = 0xFF; // initialize $4004 to FF
+        apuIoRegisters[0x05] = 0xFF; // initialize $4005 to FF
+        apuIoRegisters[0x06] = 0xFF; // Initialize $4006 to FF
+        apuIoRegisters[0x07] = 0xFF; // Initialize $4007 to FF
     }
 
     public int read(int addr) {

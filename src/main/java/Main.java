@@ -70,7 +70,7 @@ public class Main {
                 memoryViewer.updateMemory();
 
                 // Introduce a small delay for readability in GUI
-               Thread.sleep(50); // Adjust for testing
+               Thread.sleep(0); // Adjust for testing
             }
 
             System.out.println("\n✅ CPU Execution Matches Reference Log!");

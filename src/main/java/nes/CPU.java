@@ -22,8 +22,8 @@ public class CPU {
         {"BCS", "LDA", "KIL", "LAX", "LDY", "LDA", "LDX", "LAX", "CLV", "LDA", "TSX", "LAS", "LDY", "LDA", "LDX", "LAX"}, // B0
         {"CPY", "CMP", "NOP", "DCP", "CPY", "CMP", "DEC", "DCP", "INY", "CMP", "DEX", "AXS", "CPY", "CMP", "DEC", "DCP"}, // C0
         {"BNE", "CMP", "KIL", "DCP", "NOP", "CMP", "DEC", "DCP", "CLD", "CMP", "NOP", "DCP", "NOP", "CMP", "DEC", "DCP"}, // D0
-        {"CPX", "SBC", "NOP", "ISC", "CPX", "SBC", "INC", "ISC", "INX", "SBC", "NOP", "SBC", "CPX", "SBC", "INC", "ISC"}, // E0
-        {"BEQ", "SBC", "KIL", "ISC", "NOP", "SBC", "INC", "ISC", "SED", "SBC", "NOP", "ISC", "NOP", "SBC", "INC", "ISC"}  // F0
+        {"CPX", "SBC", "NOP", "ISB", "CPX", "SBC", "INC", "ISB", "INX", "SBC", "NOP", "SBC", "CPX", "SBC", "INC", "ISB"}, // E0
+        {"BEQ", "SBC", "KIL", "ISB", "NOP", "SBC", "INC", "ISB", "SED", "SBC", "NOP", "ISB", "NOP", "SBC", "INC", "ISB"}  // F0
     };
 
     // === CPU Components ==============================================================================================
@@ -178,6 +178,7 @@ public class CPU {
         return switch (mode) {
             case "Immediate" -> getImmediate();
             case "ZeroPage"  -> getZeroPage();
+            case "ZeroPageY"  -> getZeroPageY();
             case "ZeroPageX" -> getZeroPageX();
             case "Absolute"  -> getAbsolute();
             case "AbsoluteX" -> getAbsoluteX();
@@ -213,13 +214,26 @@ public class CPU {
         int effectiveAddr = -1, finalValue = 0;
         int baseAddr = -1;
 
-        // Detect unofficial opcodes (NOP, LAX, etc.) //TODO: convert to hashmap
+        // Detect unofficial opcodes (NOP, LAX, etc.) //TODO: convert to hashmap?
         boolean isUnofficial = switch (opcode) {
-            case 0x04, 0x44, 0x64, 0x0C, 0x14, 0x34, 0x54, 0x74, 0xD4, 0xF4,
-                 0x1A, 0x3A, 0x5A, 0x7A, 0xDA, 0xFA, 0x1C, 0x3C, 0x5C, 0x7C, 0xDC, 0xFC, 0x80,
-                 0xA3, 0xA7, 0xAF, 0xB3, 0xB7, 0xBF -> true;
+            case 0x04, 0x44, 0x64,                          // ZeroPage DOP variants
+                 0x0C, 0x14, 0x34, 0x54, 0x74, 0xD4, 0xF4,  // TOP variants (Absolute/ZeroPage,X)
+                 0x1A, 0x3A, 0x5A, 0x7A, 0xDA, 0xFA,        // one-byte NOPs (Implied)
+                 0x1C, 0x3C, 0x5C, 0x7C, 0xDC, 0xFC,        // Absolute,X unofficial NOPs
+                 0x80,                                      // Immediate NOP (unofficial)
+                 0xA3, 0xA7, 0xAF, 0xB3, 0xB7, 0xBF,        // Unofficial LAX
+                 0x83, 0x87, 0x8F, 0x97,                    // Unofficial SAX
+                 0xE3, 0xE7, 0xEF, 0xF3, 0xF7, 0xFB, 0xFF,  // Unofficial ISB
+                0xEB,                                       // Unofficial SBC
+                 0xC3, 0xC7, 0xCF, 0xD3, 0xD7, 0xDB , 0xDF, // Unofficial DCP
+                 0x03, 0x07, 0x0F, 0x13, 0x17, 0x1B, 0x1F, 0x23, 0x27, 0x2F, 0x33, 0x37, 0x3B, 0x3F, // Unofficial SLO
+                 0x43, 0x47, 0x4F, 0x53, 0x57, 0x5B, 0x5F,   // Unofficial SRE
+                 0x67, 0x63, 0x6F, 0x73, 0x7B, 0x7F,          // Unofficial RRE
+                0x77                                            // Unofficial RRA
+                    -> true;
             default -> false;
         };
+
 
         // Determine the effective address for memory reads
         switch (mode) {
@@ -319,10 +333,9 @@ public class CPU {
 
         // Determine the mnemonic. For unofficial opcodes like LAX or NOP, prefix with an asterisk.
         String mnemonic;
-        if (instruction.equals("LAX")) {
-            mnemonic = "*LAX";
-        } else if (isUnofficial) {
-            mnemonic = "*NOP";
+
+        if (isUnofficial) {
+            mnemonic = "*" + instruction;
         } else {
             mnemonic = instruction;
         }
@@ -346,7 +359,7 @@ public class CPU {
         // Retrieve instruction and addressing mode
         int row = (opcode & 0xF0) >> 4, col = opcode & 0x0F;
         String instruction = opcodeMatrix[row][col];
-        String mode = AddressingModeMatrix.getAddressingMode(opcode);
+        String mode = Addresser.getAddressingMode(opcode);
 
         // Determine instruction size based on addressing mode (used later to advance PC based on size)
         int instructionSize = switch (mode) {
@@ -490,6 +503,12 @@ public class CPU {
                 memory.write(addr, getY());
                 break;
             }
+            case "SAX": {
+                int addr = getEffectiveAddress(mode);
+                int storeValue = getA() & getX();
+                memory.write(addr, storeValue);
+                break;
+            }
             // --- ALU Operations ---
             case "ADC": {
                 int value = fetchOperandValue(mode);
@@ -501,8 +520,17 @@ public class CPU {
                 setZeroAndNegativeFlags(getA());
                 break;
             }
-            case "SBC": {
-                int value = fetchOperandValue(mode);
+            case "SBC", "ISB": {
+                int value;
+                if (instruction.equals("ISB")) {  // or a check on the opcode value
+                    int addr = getEffectiveAddress(mode);
+                    int memVal = memory.read(addr);
+                    memVal = (memVal + 1) & 0xFF;
+                    memory.write(addr, memVal);
+                    value = memVal;
+                } else {
+                    value = fetchOperandValue(mode);
+                }
                 value ^= 0xFF;
                 int carry = getFlag(FLAG_C) ? 1 : 0;
                 int result = getA() + value + carry;
@@ -617,6 +645,75 @@ public class CPU {
                     memory.write(addr, value);
                     setZeroAndNegativeFlags(value);
                 }
+                break;
+            }
+            case "SLO": {
+                int addr = getEffectiveAddress(mode);           // Compute effective address based on addressing mode
+                int value = memory.read(addr);                  // Read value from memory
+
+                // Perform ASL (Arithmetic Shift Left)
+                setFlag(FLAG_C, (value & 0x80) != 0);     // Set Carry flag based on bit 7 of original value
+                value = (value << 1) & 0xFF;                    // Shift left and ensure 8-bit result
+                memory.write(addr, value);                      // Write shifted value back to memory
+
+                // ORA: Combine the shifted value with the accumulator
+                int result = getA() | value;
+                setA(result);
+                setZeroAndNegativeFlags(result);                 // Update Zero and Negative flags
+                break;
+            }
+            case "RLA": {
+                int addr = getEffectiveAddress(mode);      // Compute effective address based on addressing mode
+                int value = memory.read(addr);               // Read the value from memory
+
+                // Perform ROL (Rotate Left)
+                boolean oldCarry = getFlag(FLAG_C);          // Save the old Carry flag
+                boolean newCarry = (value & 0x80) != 0;        // Determine new Carry flag from bit 7
+                value = ((value << 1) & 0xFF) | (oldCarry ? 1 : 0); // Rotate left including the old carry
+                setFlag(FLAG_C, newCarry);                   // Update the Carry flag
+                memory.write(addr, value);                   // Write the rotated value back to memory
+
+                // AND the accumulator with the rotated value
+                int result = getA() & value;
+                setA(result);
+                setZeroAndNegativeFlags(result);             // Update Zero and Negative flags
+                break;
+            }
+            case "SRE": {
+                int addr = getEffectiveAddress(mode);  // Compute effective address based on addressing mode
+                int value = memory.read(addr);           // Read value from memory
+
+                // Perform LSR (Logical Shift Right)
+                setFlag(FLAG_C, (value & 0x01) != 0);      // Set Carry flag from bit 0 of original value
+                value = (value >> 1) & 0xFF;               // Logical shift right, ensuring 8-bit result
+                memory.write(addr, value);               // Write shifted value back to memory
+
+                // EOR: Exclusive OR the shifted value with the accumulator
+                int result = getA() ^ value;
+                setA(result);
+                setZeroAndNegativeFlags(result);         // Update Zero and Negative flags
+                break;
+            }
+            case "RRA": {
+                int addr = getEffectiveAddress(mode);      // Compute effective address using the addressing mode
+                int value = memory.read(addr);               // Read value from memory
+
+                // Perform ROR (rotate right)
+                boolean oldCarry = getFlag(FLAG_C);          // Save the old carry flag
+                int newCarryBit = value & 0x01;                // Bit 0 becomes the new carry
+                value = (value >> 1) | (oldCarry ? 0x80 : 0);    // Rotate right: shift, then add old carry into bit 7
+                setFlag(FLAG_C, newCarryBit != 0);             // Update carry flag
+                memory.write(addr, value);                   // Write the rotated value back to memory
+
+                // Now perform ADC with the rotated value.
+                // Note: ADC uses the processor’s current carry flag (which was set by the ROR above).
+                int a = getA();
+                int c = getFlag(FLAG_C) ? 1 : 0;
+                int result = a + value + c;
+                setFlag(FLAG_C, result > 0xFF);
+                setFlag(FLAG_V, ((a ^ result) & (value ^ result) & 0x80) != 0);
+                setA(result & 0xFF);
+                setZeroAndNegativeFlags(getA());
                 break;
             }
             // --- Compare and Test Operations ---
