@@ -2,37 +2,78 @@ package nes;
 
 public class CPU {
 
-    // === Definitions =================================================================================================
+    // === Definitions
+    // =================================================================================================
 
     private static final int STACK_START = 0xFD; // Default NES stack start ($01FD)
 
-    public static final String[][] opcodeMatrix = {
-        // +0     +1     +2     +3     +4     +5     +6     +7     +8     +9     +A     +B     +C     +D     +E     +F
-        {"BRK", "ORA", "KIL", "SLO", "NOP", "ORA", "ASL", "SLO", "PHP", "ORA", "ASL", "ANC", "NOP", "ORA", "ASL", "SLO"}, // 00
-        {"BPL", "ORA", "KIL", "SLO", "NOP", "ORA", "ASL", "SLO", "CLC", "ORA", "NOP", "SLO", "NOP", "ORA", "ASL", "SLO"}, // 10
-        {"JSR", "AND", "KIL", "RLA", "BIT", "AND", "ROL", "RLA", "PLP", "AND", "ROL", "ANC", "BIT", "AND", "ROL", "RLA"}, // 20
-        {"BMI", "AND", "KIL", "RLA", "NOP", "AND", "ROL", "RLA", "SEC", "AND", "NOP", "RLA", "NOP", "AND", "ROL", "RLA"}, // 30
-        {"RTI", "EOR", "KIL", "SRE", "NOP", "EOR", "LSR", "SRE", "PHA", "EOR", "LSR", "ALR", "JMP", "EOR", "LSR", "SRE"}, // 40
-        {"BVC", "EOR", "KIL", "SRE", "NOP", "EOR", "LSR", "SRE", "CLI", "EOR", "NOP", "SRE", "NOP", "EOR", "LSR", "SRE"}, // 50
-        {"RTS", "ADC", "KIL", "RRA", "NOP", "ADC", "ROR", "RRA", "PLA", "ADC", "ROR", "ARR", "JMP", "ADC", "ROR", "RRA"}, // 60
-        {"BVS", "ADC", "KIL", "RRA", "NOP", "ADC", "ROR", "RRA", "SEI", "ADC", "NOP", "RRA", "NOP", "ADC", "ROR", "RRA"}, // 70
-        {"NOP", "STA", "NOP", "SAX", "STY", "STA", "STX", "SAX", "DEY", "NOP", "TXA", "XAA", "STY", "STA", "STX", "SAX"}, // 80
-        {"BCC", "STA", "KIL", "AHX", "STY", "STA", "STX", "SAX", "TYA", "STA", "TXS", "TAS", "SHY", "STA", "SHX", "AHX"}, // 90
-        {"LDY", "LDA", "LDX", "LAX", "LDY", "LDA", "LDX", "LAX", "TAY", "LDA", "TAX", "LAX", "LDY", "LDA", "LDX", "LAX"}, // A0
-        {"BCS", "LDA", "KIL", "LAX", "LDY", "LDA", "LDX", "LAX", "CLV", "LDA", "TSX", "LAS", "LDY", "LDA", "LDX", "LAX"}, // B0
-        {"CPY", "CMP", "NOP", "DCP", "CPY", "CMP", "DEC", "DCP", "INY", "CMP", "DEX", "AXS", "CPY", "CMP", "DEC", "DCP"}, // C0
-        {"BNE", "CMP", "KIL", "DCP", "NOP", "CMP", "DEC", "DCP", "CLD", "CMP", "NOP", "DCP", "NOP", "CMP", "DEC", "DCP"}, // D0
-        {"CPX", "SBC", "NOP", "ISB", "CPX", "SBC", "INC", "ISB", "INX", "SBC", "NOP", "SBC", "CPX", "SBC", "INC", "ISB"}, // E0
-        {"BEQ", "SBC", "KIL", "ISB", "NOP", "SBC", "INC", "ISB", "SED", "SBC", "NOP", "ISB", "NOP", "SBC", "INC", "ISB"}  // F0
+    public static final String[] OP_NAMES = {
+            "BRK", "ORA", "KIL", "SLO", "NOP", "ORA", "ASL", "SLO", "PHP", "ORA", "ASL", "ANC", "NOP", "ORA", "ASL",
+            "SLO",
+            "BPL", "ORA", "KIL", "SLO", "NOP", "ORA", "ASL", "SLO", "CLC", "ORA", "NOP", "SLO", "NOP", "ORA", "ASL",
+            "SLO",
+            "JSR", "AND", "KIL", "RLA", "BIT", "AND", "ROL", "RLA", "PLP", "AND", "ROL", "ANC", "BIT", "AND", "ROL",
+            "RLA",
+            "BMI", "AND", "KIL", "RLA", "NOP", "AND", "ROL", "RLA", "SEC", "AND", "NOP", "RLA", "NOP", "AND", "ROL",
+            "RLA",
+            "RTI", "EOR", "KIL", "SRE", "NOP", "EOR", "LSR", "SRE", "PHA", "EOR", "LSR", "ALR", "JMP", "EOR", "LSR",
+            "SRE",
+            "BVC", "EOR", "KIL", "SRE", "NOP", "EOR", "LSR", "SRE", "CLI", "EOR", "NOP", "SRE", "NOP", "EOR", "LSR",
+            "SRE",
+            "RTS", "ADC", "KIL", "RRA", "NOP", "ADC", "ROR", "RRA", "PLA", "ADC", "ROR", "ARR", "JMP", "ADC", "ROR",
+            "RRA",
+            "BVS", "ADC", "KIL", "RRA", "NOP", "ADC", "ROR", "RRA", "SEI", "ADC", "NOP", "RRA", "NOP", "ADC", "ROR",
+            "RRA",
+            "NOP", "STA", "NOP", "SAX", "STY", "STA", "STX", "SAX", "DEY", "NOP", "TXA", "XAA", "STY", "STA", "STX",
+            "SAX",
+            "BCC", "STA", "KIL", "AHX", "STY", "STA", "STX", "SAX", "TYA", "STA", "TXS", "TAS", "SHY", "STA", "SHX",
+            "AHX",
+            "LDY", "LDA", "LDX", "LAX", "LDY", "LDA", "LDX", "LAX", "TAY", "LDA", "TAX", "LAX", "LDY", "LDA", "LDX",
+            "LAX",
+            "BCS", "LDA", "KIL", "LAX", "LDY", "LDA", "LDX", "LAX", "CLV", "LDA", "TSX", "LAS", "LDY", "LDA", "LDX",
+            "LAX",
+            "CPY", "CMP", "NOP", "DCP", "CPY", "CMP", "DEC", "DCP", "INY", "CMP", "DEX", "AXS", "CPY", "CMP", "DEC",
+            "DCP",
+            "BNE", "CMP", "KIL", "DCP", "NOP", "CMP", "DEC", "DCP", "CLD", "CMP", "NOP", "DCP", "NOP", "CMP", "DEC",
+            "DCP",
+            "CPX", "SBC", "NOP", "ISB", "CPX", "SBC", "INC", "ISB", "INX", "SBC", "NOP", "SBC", "CPX", "SBC", "INC",
+            "ISB",
+            "BEQ", "SBC", "KIL", "ISB", "NOP", "SBC", "INC", "ISB", "SED", "SBC", "NOP", "ISB", "NOP", "SBC", "INC",
+            "ISB"
     };
 
-    // === CPU Components ==============================================================================================
+    public static final int[] OP_CYCLES = {
+            7, 6, 0, 8, 3, 3, 5, 5, 3, 2, 2, 0, 4, 4, 6, 6,
+            2, 5, 0, 8, 4, 4, 6, 6, 2, 4, 2, 7, 4, 4, 7, 7,
+            6, 6, 0, 8, 3, 3, 5, 5, 4, 2, 2, 0, 4, 4, 6, 6,
+            2, 5, 0, 8, 4, 4, 6, 6, 2, 4, 2, 7, 4, 4, 7, 7,
+            6, 6, 0, 8, 3, 3, 5, 5, 3, 2, 2, 0, 3, 4, 6, 6,
+            2, 5, 0, 8, 4, 4, 6, 6, 0, 4, 2, 7, 4, 4, 7, 7,
+            6, 6, 0, 8, 3, 3, 5, 5, 4, 2, 2, 0, 5, 4, 6, 6,
+            2, 5, 0, 8, 4, 4, 6, 6, 2, 4, 2, 7, 4, 4, 7, 7,
+            2, 6, 2, 6, 3, 3, 3, 3, 2, 2, 2, 2, 4, 4, 4, 4,
+            2, 6, 0, 6, 4, 4, 4, 4, 2, 5, 2, 5, 5, 5, 5, 5,
+            2, 6, 2, 6, 3, 3, 3, 3, 2, 2, 2, 2, 4, 4, 4, 4,
+            2, 5, 0, 5, 4, 4, 4, 4, 2, 4, 2, 4, 4, 4, 4, 4,
+            2, 6, 2, 8, 3, 3, 5, 5, 2, 2, 2, 2, 4, 4, 6, 6,
+            2, 5, 0, 8, 4, 4, 6, 6, 2, 4, 2, 7, 4, 4, 7, 7,
+            2, 6, 2, 8, 3, 3, 5, 5, 2, 2, 2, 2, 4, 4, 6, 6,
+            2, 5, 0, 8, 4, 4, 6, 6, 2, 4, 2, 7, 4, 4, 7, 7
+    };
+
+    // === CPU Components
+    // ==============================================================================================
 
     private int registers; // Register bitfield (32-bit integer)
     private int PC; // 16-bit Program Counter
     private int flags; // 8-bit Status Flags
+    private long totalCycles = 0; // Total CPU cycles executed
+    private boolean loggingEnabled = false;
 
     private final Memory memory;
+
+    // Helper for correct timing on page crosses
+    private boolean pageBoundaryCrossed = false;
 
     // Flag bit positions
     private static final int FLAG_C = 0; // Carry
@@ -43,11 +84,16 @@ public class CPU {
     private static final int FLAG_V = 6; // Overflow
     private static final int FLAG_N = 7; // Negative
 
-    // === CPU Functions ===============================================================================================
+    // === CPU Functions
+    // ===============================================================================================
 
     public CPU(Memory mem) {
         this.memory = mem;
         reset();
+    }
+
+    public void setLoggingEnabled(boolean enabled) {
+        this.loggingEnabled = enabled;
     }
 
     public void reset(Integer startPC) {
@@ -57,39 +103,82 @@ public class CPU {
             PC = (memory.read(0xFFFC) & 0xFF) | ((memory.read(0xFFFD) & 0xFF) << 8);
         }
 
-        flags = 0x24;  //  IRQ Disabled (I=1), Unused Bit (5) always set
-        setSP(STACK_START);  //  Set stack pointer using bitfield
+        flags = 0x24; // IRQ Disabled (I=1), Unused Bit (5) always set
+        setSP(STACK_START); // Set stack pointer using bitfield
+        totalCycles = 7; // Initialization takes 7 cycles
     }
 
-    public void reset() { //Default NES CPU behaviour
+    public void reset() { // Default NES CPU behaviour
         reset(null); // Calls the version with an argument, defaulting to the reset vector
     }
 
-    private void branch(boolean condition) {
-        int rawOffset = memory.read(PC + 1); // Fetch offset byte
-        PC += 2;  // Advance PC past the branch instruction
+    public long getTotalCycles() {
+        return totalCycles;
+    }
 
+    private void branch(boolean condition) {
         if (condition) {
-            int signedOffset = (rawOffset > 0x7F) ? rawOffset - 0x100 : rawOffset; // new var to verbosely show conversion
-            PC += signedOffset;  // Apply offset
+            totalCycles++; // Branch taken penalty
+            int rawOffset = memory.read(PC + 1); // Fetch offset byte
+
+            int basePC = PC + 2; // The PC after reading the branch instruction
+            int signedOffset = (rawOffset > 0x7F) ? rawOffset - 0x100 : rawOffset;
+            int newPC = basePC + signedOffset;
+
+            if ((basePC & 0xFF00) != (newPC & 0xFF00)) {
+                totalCycles++; // Page crossing penalty
+            }
+
+            PC = newPC;
+        } else {
+            PC += 2; // Just skip the instruction
         }
     }
 
-    // === Register Getters and Setters ================================================================================
-    private int getA() { return registers & 0xFF; }
-    private int getX() { return (registers >> 8) & 0xFF; }
-    private int getY() { return (registers >> 16) & 0xFF; }
-    private int getSP() { return (registers >> 24) & 0xFF; }
+    // === Register Getters and Setters
+    // ================================================================================
+    private int getA() {
+        return registers & 0xFF;
+    }
 
-    private void setA(int value) { registers = (registers & 0xFFFFFF00) | (value & 0xFF); }
-    private void setX(int value) { registers = (registers & 0xFFFF00FF) | ((value & 0xFF) << 8); }
-    private void setY(int value) { registers = (registers & 0xFF00FFFF) | ((value & 0xFF) << 16); }
-    private void setSP(int value) { registers = (registers & 0x00FFFFFF) | ((value & 0xFF) << 24); }
+    private int getX() {
+        return (registers >> 8) & 0xFF;
+    }
 
-    // === Memory Location =============================================================================================
+    private int getY() {
+        return (registers >> 16) & 0xFF;
+    }
 
-    private int getImmediate() { return memory.read(PC + 1); }
-    private int getZeroPage() { return memory.read(memory.read(PC + 1) & 0xFF); }
+    private int getSP() {
+        return (registers >> 24) & 0xFF;
+    }
+
+    private void setA(int value) {
+        registers = (registers & 0xFFFFFF00) | (value & 0xFF);
+    }
+
+    private void setX(int value) {
+        registers = (registers & 0xFFFF00FF) | ((value & 0xFF) << 8);
+    }
+
+    private void setY(int value) {
+        registers = (registers & 0xFF00FFFF) | ((value & 0xFF) << 16);
+    }
+
+    private void setSP(int value) {
+        registers = (registers & 0x00FFFFFF) | ((value & 0xFF) << 24);
+    }
+
+    // === Memory Location
+    // =============================================================================================
+
+    private int getImmediate() {
+        return memory.read(PC + 1);
+    }
+
+    private int getZeroPage() {
+        return memory.read(memory.read(PC + 1) & 0xFF);
+    }
 
     private int getAbsolute() {
         int addr = memory.read(PC + 1) | (memory.read(PC + 2) << 8);
@@ -97,21 +186,25 @@ public class CPU {
     }
 
     private int getAbsoluteX() {
-        int low = memory.read(PC + 1);  // Fetch the low byte
+        int low = memory.read(PC + 1); // Fetch the low byte
         int high = memory.read(PC + 2); // Fetch the high byte
         int baseAddr = low | (high << 8); // Combine into a 16-bit address
 
         int effectiveAddr = (baseAddr + getX()) & 0xFFFF; // Add X register, ensure 16-bit wraparound
 
+        pageBoundaryCrossed = (baseAddr & 0xFF00) != (effectiveAddr & 0xFF00);
+
         return memory.read(effectiveAddr); // Fetch and return the value at the computed address
     }
 
     private int getAbsoluteY() {
-        int low = memory.read(PC + 1);  // Fetch the low byte
+        int low = memory.read(PC + 1); // Fetch the low byte
         int high = memory.read(PC + 2); // Fetch the high byte
         int baseAddr = low | (high << 8); // Combine into a 16-bit address
 
         int effectiveAddr = (baseAddr + getY()) & 0xFFFF; // Add Y register, handle 16-bit wraparound
+
+        pageBoundaryCrossed = (baseAddr & 0xFF00) != (effectiveAddr & 0xFF00);
 
         return memory.read(effectiveAddr);
     }
@@ -130,29 +223,36 @@ public class CPU {
         int pointer = (memory.read(PC + 1) + getX()) & 0xFF; // Wrap at 0xFF
         int lo = memory.read(pointer);
         int hi = memory.read((pointer + 1) & 0xFF); // Wrap at 0xFF
-        return (hi << 8) | lo;  // Combine into 16-bit address
+        return (hi << 8) | lo; // Combine into 16-bit address
     }
 
     private int getIndirectY() {
-        int zpAddr = memory.read(PC + 1) & 0xFF;  // Read operand
+        int zpAddr = memory.read(PC + 1) & 0xFF; // Read operand
         int baseAddr = memory.read(zpAddr) | (memory.read((zpAddr + 1) & 0xFF) << 8); // Fetch pointer (little-endian)
-        return (baseAddr + getY()) & 0xFFFF; // Add Y register, handle 16-bit wraparound
+        int effectiveAddr = (baseAddr + getY()) & 0xFFFF; // Add Y register, handle 16-bit wraparound
+
+        pageBoundaryCrossed = (baseAddr & 0xFF00) != (effectiveAddr & 0xFF00);
+
+        return effectiveAddr;
     }
 
-    // === Flag Handling ===============================================================================================
+    // === Flag Handling
+    // ===============================================================================================
     private boolean getFlag(int bit) {
         return (flags & (1 << bit)) != 0;
     }
 
     private void setFlag(int bit, boolean value) {
-        if (value) flags |= (1 << bit);
-        else flags &= ~(1 << bit);
+        if (value)
+            flags |= (1 << bit);
+        else
+            flags &= ~(1 << bit);
     }
 
     private void setFlagsFromByte(int value) {
         flags = value & 0xFF; // Keep within 8-bit range
         flags &= ~0x10; // Ensure B flag (Bit 4) is cleared
-        flags |= 0x20;  // Ensure Bit 5 (Unused) is always set
+        flags |= 0x20; // Ensure Bit 5 (Unused) is always set
     }
 
     private void setZeroAndNegativeFlags(int value) {
@@ -160,27 +260,33 @@ public class CPU {
         setFlag(FLAG_N, (value & 0x80) != 0);
     }
 
-    // === Helpers =====================================================================================================
+    // === Helpers
+    // =====================================================================================================
     private void pushStack(int value) {
-        memory.write(0x0100 + getSP(), value & 0xFF); //  Write to stack memory
-        setSP((getSP() - 1) & 0xFF); //  Decrement SP and wrap in 8-bit range
+        memory.write(0x0100 + getSP(), value & 0xFF); // Write to stack memory
+        setSP((getSP() - 1) & 0xFF); // Decrement SP and wrap in 8-bit range
     }
 
     private int popStack() {
-        setSP((getSP() + 1) & 0xFF); //  Increment SP and wrap in 8-bit range
-        return memory.read(0x0100 + getSP()) & 0xFF; //  Read from stack memory
+        setSP((getSP() + 1) & 0xFF); // Increment SP and wrap in 8-bit range
+        return memory.read(0x0100 + getSP()) & 0xFF; // Read from stack memory
     }
 
-    private int getFirstOperand(){ return (PC + 1 < 0x10000) ? memory.read(PC + 1) & 0xFF : 0; }
-    private int getSecondOperand(){ return (PC + 2 < 0x10000) ? memory.read(PC + 2) & 0xFF : 0; }
+    private int getFirstOperand() {
+        return (PC + 1 < 0x10000) ? memory.read(PC + 1) & 0xFF : 0;
+    }
+
+    private int getSecondOperand() {
+        return (PC + 2 < 0x10000) ? memory.read(PC + 2) & 0xFF : 0;
+    }
 
     private int fetchOperandValue(String mode) { // Fetch the operand value based on the addressing mode
         return switch (mode) {
             case "Immediate" -> getImmediate();
-            case "ZeroPage"  -> getZeroPage();
-            case "ZeroPageY"  -> getZeroPageY();
+            case "ZeroPage" -> getZeroPage();
+            case "ZeroPageY" -> getZeroPageY();
             case "ZeroPageX" -> getZeroPageX();
-            case "Absolute"  -> getAbsolute();
+            case "Absolute" -> getAbsolute();
             case "AbsoluteX" -> getAbsoluteX();
             case "AbsoluteY" -> getAbsoluteY();
             case "IndirectX" -> memory.read(getIndirectX());
@@ -193,49 +299,77 @@ public class CPU {
     }
 
     private int getEffectiveAddress(String mode) { // Compute the effective address (for read/write operations)
-        return switch (mode) {
-            case "ZeroPage"   -> memory.read(PC + 1) & 0xFF;
-            case "ZeroPageX"  -> (memory.read(PC + 1) + getX()) & 0xFF;
-            case "ZeroPageY"  -> (memory.read(PC + 1) + getY()) & 0xFF;
-            case "Absolute"   -> (memory.read(PC + 1) | (memory.read(PC + 2) << 8)) & 0xFFFF;
-            case "AbsoluteX"  -> ((memory.read(PC + 1) | (memory.read(PC + 2) << 8)) + getX()) & 0xFFFF;
-            case "AbsoluteY"  -> ((memory.read(PC + 1) | (memory.read(PC + 2) << 8)) + getY()) & 0xFFFF;
-            case "IndirectX"  -> getIndirectX();
-            case "IndirectY"  -> getIndirectY();
-            default -> {
-                System.out.printf("Unknown addressing mode for effective address: %s\n", mode);
-                yield 0;
-            }
-        };
+        // Note: For Read-Modify-Write instructions or Stores, we don't usually add
+        // cycle penalties
+        // in the same way, or the calling switch case handles it.
+        // However, we still need to set pageBoundaryCrossed for potential checks.
+        int addr = 0;
+        int baseAddr = 0;
+        switch (mode) {
+            case "ZeroPage":
+                addr = memory.read(PC + 1) & 0xFF;
+                break;
+            case "ZeroPageX":
+                addr = (memory.read(PC + 1) + getX()) & 0xFF;
+                break;
+            case "ZeroPageY":
+                addr = (memory.read(PC + 1) + getY()) & 0xFF;
+                break;
+            case "Absolute":
+                addr = (memory.read(PC + 1) | (memory.read(PC + 2) << 8)) & 0xFFFF;
+                break;
+            case "AbsoluteX":
+                baseAddr = memory.read(PC + 1) | (memory.read(PC + 2) << 8);
+                addr = (baseAddr + getX()) & 0xFFFF;
+                pageBoundaryCrossed = (baseAddr & 0xFF00) != (addr & 0xFF00);
+                break;
+            case "AbsoluteY":
+                baseAddr = memory.read(PC + 1) | (memory.read(PC + 2) << 8);
+                addr = (baseAddr + getY()) & 0xFFFF;
+                pageBoundaryCrossed = (baseAddr & 0xFF00) != (addr & 0xFF00);
+                break;
+            case "IndirectX":
+                addr = getIndirectX();
+                break;
+            case "IndirectY":
+                addr = getIndirectY();
+                break;
+        }
+        return addr;
     }
 
-    // === Logging =====================================================================================================
+    // === Logging
+    // =====================================================================================================
     private void printInstructionLog(int opcode, String instruction, String mode, int instructionSize) {
+        if (!loggingEnabled)
+            return;
+
         int effectiveAddr = -1, finalValue = 0;
         int baseAddr = -1;
 
-        // Detect unofficial opcodes (NOP, LAX, etc.) //TODO: convert to hashmap?
+        // Detect unofficial opcodes (NOP, LAX, etc.)
         boolean isUnofficial = switch (opcode) {
-            case 0x04, 0x44, 0x64,                          // ZeroPage DOP variants
-                 0x0C, 0x14, 0x34, 0x54, 0x74, 0xD4, 0xF4,  // TOP variants (Absolute/ZeroPage,X)
-                 0x1A, 0x3A, 0x5A, 0x7A, 0xDA, 0xFA,        // one-byte NOPs (Implied)
-                 0x1C, 0x3C, 0x5C, 0x7C, 0xDC, 0xFC,        // Absolute,X unofficial NOPs
-                 0x80,                                      // Immediate NOP (unofficial)
-                 0xA3, 0xA7, 0xAF, 0xB3, 0xB7, 0xBF,        // Unofficial LAX
-                 0x83, 0x87, 0x8F, 0x97,                    // Unofficial SAX
-                 0xE3, 0xE7, 0xEF, 0xF3, 0xF7, 0xFB, 0xFF,  // Unofficial ISB
-                0xEB,                                       // Unofficial SBC
-                 0xC3, 0xC7, 0xCF, 0xD3, 0xD7, 0xDB , 0xDF, // Unofficial DCP
-                 0x03, 0x07, 0x0F, 0x13, 0x17, 0x1B, 0x1F, 0x23, 0x27, 0x2F, 0x33, 0x37, 0x3B, 0x3F, // Unofficial SLO
-                 0x43, 0x47, 0x4F, 0x53, 0x57, 0x5B, 0x5F,   // Unofficial SRE
-                 0x67, 0x63, 0x6F, 0x73, 0x7B, 0x7F,          // Unofficial RRE
-                0x77                                            // Unofficial RRA
-                    -> true;
+            case 0x04, 0x44, 0x64, // ZeroPage DOP variants
+                    0x0C, 0x14, 0x34, 0x54, 0x74, 0xD4, 0xF4, // TOP variants (Absolute/ZeroPage,X)
+                    0x1A, 0x3A, 0x5A, 0x7A, 0xDA, 0xFA, // one-byte NOPs (Implied)
+                    0x1C, 0x3C, 0x5C, 0x7C, 0xDC, 0xFC, // Absolute,X unofficial NOPs
+                    0x80, // Immediate NOP (unofficial)
+                    0xA3, 0xA7, 0xAF, 0xB3, 0xB7, 0xBF, // Unofficial LAX
+                    0x83, 0x87, 0x8F, 0x97, // Unofficial SAX
+                    0xE3, 0xE7, 0xEF, 0xF3, 0xF7, 0xFB, 0xFF, // Unofficial ISB
+                    0xEB, // Unofficial SBC
+                    0xC3, 0xC7, 0xCF, 0xD3, 0xD7, 0xDB, 0xDF, // Unofficial DCP
+                    0x03, 0x07, 0x0F, 0x13, 0x17, 0x1B, 0x1F, 0x23, 0x27, 0x2F, 0x33, 0x37, 0x3B, 0x3F, // Unofficial
+                                                                                                        // SLO
+                    0x43, 0x47, 0x4F, 0x53, 0x57, 0x5B, 0x5F, // Unofficial SRE
+                    0x67, 0x63, 0x6F, 0x73, 0x7B, 0x7F, // Unofficial RRE
+                    0x77 // Unofficial RRA
+                -> true;
             default -> false;
         };
 
-
-        // Determine the effective address for memory reads
+        // Determine the effective address for memory reads (only for logging purposes,
+        // doesn't affect flags)
         switch (mode) {
             case "ZeroPage", "ZeroPageX", "ZeroPageY":
                 effectiveAddr = (getFirstOperand() +
@@ -249,7 +383,9 @@ public class CPU {
                 effectiveAddr = getIndirectX();
                 break;
             case "IndirectY":
-                baseAddr = memory.read(getFirstOperand()) | (memory.read((getFirstOperand() + 1) & 0xFF) << 8);
+                // Re-calculate for logging (don't update flag here)
+                int zpAddr = memory.read(PC + 1) & 0xFF;
+                baseAddr = memory.read(zpAddr) | (memory.read((zpAddr + 1) & 0xFF) << 8);
                 effectiveAddr = (baseAddr + getY()) & 0xFFFF;
                 break;
         }
@@ -259,7 +395,8 @@ public class CPU {
             finalValue = memory.read(effectiveAddr);
         }
 
-        boolean isMemoryRead = instruction.matches("LD[AXY]|BIT|CMP|AND|SBC|ORA|EOR|ADC|CP[XY]|LSR|ASL|ROR|ROL|INC|DEC");
+        boolean isMemoryRead = instruction
+                .matches("LD[AXY]|BIT|CMP|AND|SBC|ORA|EOR|ADC|CP[XY]|LSR|ASL|ROR|ROL|INC|DEC");
         boolean isMemoryWrite = instruction.startsWith("ST");
 
         // Format the operand description (this is used for display after the mnemonic)
@@ -267,9 +404,9 @@ public class CPU {
             case "Accumulator" -> "A";
             case "Immediate" -> String.format("#$%02X", getFirstOperand());
             case "ZeroPage" ->
-                    String.format("$%02X%s%s", getFirstOperand(),
-                            mode.contains("X") ? ",X" : mode.contains("Y") ? ",Y" : "",
-                            (isMemoryRead || isMemoryWrite) ? String.format(" = %02X", finalValue) : "");
+                String.format("$%02X%s%s", getFirstOperand(),
+                        mode.contains("X") ? ",X" : mode.contains("Y") ? ",Y" : "",
+                        (isMemoryRead || isMemoryWrite) ? String.format(" = %02X", finalValue) : "");
             case "ZeroPageX", "ZeroPageY" -> {
                 int addr = (getFirstOperand() + (mode.contains("X") ? getX() : getY())) & 0xFF;
                 yield String.format("$%02X,%s @ %02X = %02X",
@@ -279,13 +416,13 @@ public class CPU {
                         finalValue);
             }
             case "Absolute" ->
-                    String.format("$%04X%s%s", baseAddr,
-                            mode.contains("X") ? ",X" : mode.contains("Y") ? ",Y" : "",
-                            (isMemoryRead || isMemoryWrite) ? String.format(" = %02X", finalValue) : "");
+                String.format("$%04X%s%s", baseAddr,
+                        mode.contains("X") ? ",X" : mode.contains("Y") ? ",Y" : "",
+                        (isMemoryRead || isMemoryWrite) ? String.format(" = %02X", finalValue) : "");
             case "AbsoluteX" ->
-                    String.format("$%04X,X @ %04X = %02X", baseAddr, effectiveAddr, finalValue);
+                String.format("$%04X,X @ %04X = %02X", baseAddr, effectiveAddr, finalValue);
             case "AbsoluteY" ->
-                    String.format("$%04X,Y @ %04X = %02X", baseAddr, effectiveAddr, finalValue);
+                String.format("$%04X,Y @ %04X = %02X", baseAddr, effectiveAddr, finalValue);
             case "Indirect" -> {
                 int indirectAddr = (getSecondOperand() << 8) | getFirstOperand();
                 int targetAddr = (memory.read((indirectAddr & 0xFF00) | ((indirectAddr + 1) & 0xFF)) << 8)
@@ -308,10 +445,9 @@ public class CPU {
             default -> "";
         };
 
-        // For unofficial opcodes, adjust operand description if needed (for 2-byte or 3-byte variants)
+        // For unofficial opcodes, adjust operand description if needed
         if (isUnofficial) {
             if (instructionSize == 2) {
-                // For ZeroPage mode, adjust operand description.
                 if (mode.equals("ZeroPage")) {
                     operandDesc = String.format("$%02X = %02X", getFirstOperand(), memory.read(getFirstOperand()));
                 }
@@ -326,42 +462,50 @@ public class CPU {
             }
         }
 
-        // Use a 6-character field for unofficial opcodes, 7 for official.
         String operandField = isUnofficial
                 ? String.format("%-6s", rawOperand)
                 : String.format("%-7s", rawOperand);
 
-        // Determine the mnemonic. For unofficial opcodes like LAX or NOP, prefix with an asterisk.
-        String mnemonic;
+        String mnemonic = isUnofficial ? "*" + instruction : instruction;
 
-        if (isUnofficial) {
-            mnemonic = "*" + instruction;
-        } else {
-            mnemonic = instruction;
-        }
-
-        // Choose a final format string based on opcode type.
+        // Added CYC logging
         String fmt = isUnofficial
-                ? "%04X  %02X %-6s%s %-26s  A:%02X X:%02X Y:%02X P:%02X SP:%02X\n"
-                : "%04X  %02X %-7s%s %-26s  A:%02X X:%02X Y:%02X P:%02X SP:%02X\n";
-
+                ? "%04X  %02X %-6s%s %-26s  A:%02X X:%02X Y:%02X P:%02X SP:%02X CYC:%d\n"
+                : "%04X  %02X %-7s%s %-26s  A:%02X X:%02X Y:%02X P:%02X SP:%02X CYC:%d\n";
         System.out.printf(fmt, PC, opcode, operandField, mnemonic, operandDesc.trim(), getA(), getX(), getY(),
-                flags, getSP()
-        );
+                flags, getSP(), totalCycles);
     }
 
-    // === Main Execution ==============================================================================================
+    // === Interrupt Handling ===
+    public void nmi() {
+        pushStack((PC >> 8) & 0xFF);
+        pushStack(PC & 0xFF);
+        pushStack(flags & 0xFF); // Push P with B flag off (usually?)
+        // NMI disables I flag? No, NMI is Non-Maskable. IRQ disables I.
+        // But usually standard Interrupt sequence applies.
+        setFlag(FLAG_I, true);
+
+        PC = memory.read(0xFFFA) | (memory.read(0xFFFB) << 8); // NMI Vector
+        totalCycles += 7; // Takes 7 cycles
+    }
+
+    // === Main Execution
+    // ==============================================================================================
     public void executeNextInstruction() {
+        // Record cycle count before execution
 
         // Read opcode at current PC addr
         int opcode = memory.read(PC) & 0xFF;
 
-        // Retrieve instruction and addressing mode
-        int row = (opcode & 0xF0) >> 4, col = opcode & 0x0F;
-        String instruction = opcodeMatrix[row][col];
+        // Retrieve instruction and addressing mode using new arrays and Addresser
+        String instruction = OP_NAMES[opcode];
         String mode = Addresser.getAddressingMode(opcode);
 
-        // Determine instruction size based on addressing mode (used later to advance PC based on size)
+        // Reset page crossed flag
+        pageBoundaryCrossed = false;
+
+        // Determine instruction size based on addressing mode (used later to advance PC
+        // based on size)
         int instructionSize = switch (mode) {
             case "Implied", "Accumulator" -> 1;
             case "Immediate", "ZeroPage", "ZeroPageX", "ZeroPageY", "Relative", "IndirectX", "IndirectY" -> 2;
@@ -375,13 +519,17 @@ public class CPU {
 
         printInstructionLog(opcode, instruction, mode, instructionSize);
 
+        // Add base cycles AFTER logging (so log shows start of instruction)
+        int cycles = OP_CYCLES[opcode];
+        totalCycles += cycles;
+
         switch (instruction) {
             // --- Control Instructions ---
             case "BRK": { // Software interrupt
-                PC++; //  Skip BRK opcode
+                PC++; // Skip BRK opcode
                 pushStack((PC >> 8) & 0xFF);
                 pushStack(PC & 0xFF);
-                pushStack(flags | 0x10); //  Push status with Break flag set
+                pushStack(flags | 0x10); // Push status with Break flag set
                 setFlag(FLAG_I, true); // Disable interrupts
                 PC = memory.read(0xFFFE) | (memory.read(0xFFFF) << 8); // Jump to IRQ vector
                 return;
@@ -395,12 +543,21 @@ public class CPU {
                     case 0x04, 0x44, 0x64, 0x80: // 2-byte unofficial NOPs (DOP variants)
                         memory.read(getFirstOperand());
                         break;
-                    case 0x0C, 0x14, 0x1C, 0x34, 0x54, 0x74, 0xD4, 0xF4, 0x3C, 0x5C, 0x7C, 0xDC, 0xFC: // 3-byte unofficial NOPs (TOP variants)
-                        memory.read(getFirstOperand());
-                        memory.read((getSecondOperand() << 8) | getFirstOperand());
+                    case 0x0C, 0x14, 0x1C, 0x34, 0x54, 0x74, 0xD4, 0xF4, 0x3C, 0x5C, 0x7C, 0xDC, 0xFC: // 3-byte
+                                                                                                       // unofficial
+                                                                                                       // NOPs (TOP
+                                                                                                       // variants)
+                        // This usually does a read, which might trigger page crossing?
+                        // "NOP" variants usually don't have page crossing penalty documented, but
+                        // `nestest` might differ.
+                        // My extracted table accounts for min cycles.
+                        int addr = getEffectiveAddress(mode);
+                        memory.read(addr);
+                        if (pageBoundaryCrossed)
+                            totalCycles++; // TOP (SKW) often has penalty
                         break;
                     default:
-                        System.out.printf("⚠️ Unknown NOP Variant: 0x%02X\n", opcode);
+                        // System.out.printf("Unknown NOP Variant: 0x%02X\n", opcode);
                         break;
                 }
                 break;
@@ -412,7 +569,7 @@ public class CPU {
                 break;
             }
             case "PLP": {
-                setFlagsFromByte(popStack()); //  Restore flags from stack
+                setFlagsFromByte(popStack()); // Restore flags from stack
                 break;
             }
             case "RTI": { // Return from Interrupt
@@ -422,18 +579,35 @@ public class CPU {
                 return;
             }
             // --- Branch Instructions ---
-            case "BEQ": branch(getFlag(FLAG_Z)); return;
-            case "BNE": branch(!getFlag(FLAG_Z)); return;
-            case "BCS": branch(getFlag(FLAG_C)); return;
-            case "BCC": branch(!getFlag(FLAG_C)); return;
-            case "BMI": branch(getFlag(FLAG_N)); return;
-            case "BPL": branch(!getFlag(FLAG_N)); return;
-            case "BVS": branch(getFlag(FLAG_V)); return;
-            case "BVC": branch(!getFlag(FLAG_V)); return;
+            // Note: branch() function handles cycle penalties
+            case "BEQ":
+                branch(getFlag(FLAG_Z));
+                return;
+            case "BNE":
+                branch(!getFlag(FLAG_Z));
+                return;
+            case "BCS":
+                branch(getFlag(FLAG_C));
+                return;
+            case "BCC":
+                branch(!getFlag(FLAG_C));
+                return;
+            case "BMI":
+                branch(getFlag(FLAG_N));
+                return;
+            case "BPL":
+                branch(!getFlag(FLAG_N));
+                return;
+            case "BVS":
+                branch(getFlag(FLAG_V));
+                return;
+            case "BVC":
+                branch(!getFlag(FLAG_V));
+                return;
             // --- Jump and Subroutine ---
             case "JMP": {
                 if (mode.equals("Absolute"))
-                    PC = getEffectiveAddress("Absolute");
+                    PC = ((memory.read(PC + 1) | (memory.read(PC + 2) << 8)) & 0xFFFF);
                 else if (mode.equals("Indirect")) {
                     int indirectAddr = getFirstOperand() | (getSecondOperand() << 8);
                     int lowByte = memory.read(indirectAddr);
@@ -451,9 +625,9 @@ public class CPU {
                 return;
             }
             case "RTS": {
-                PC = popStack(); //  Pull PC low byte
-                PC |= popStack() << 8; //  Pull PC high byte
-                PC++; //  Move to next instruction after subroutine
+                PC = popStack(); // Pull PC low byte
+                PC |= popStack() << 8; // Pull PC high byte
+                PC++; // Move to next instruction after subroutine
                 break;
             }
             // --- Data Transfer / Load & Store ---
@@ -461,12 +635,16 @@ public class CPU {
                 int value = fetchOperandValue(mode);
                 setA(getA() | value);
                 setZeroAndNegativeFlags(getA());
+                if (pageBoundaryCrossed)
+                    totalCycles++;
                 break;
             }
             case "LDA": {
                 int value = fetchOperandValue(mode);
                 setA(value);
                 setZeroAndNegativeFlags(value);
+                if (pageBoundaryCrossed)
+                    totalCycles++;
                 break;
             }
             case "LAX": {
@@ -474,23 +652,30 @@ public class CPU {
                 setA(value);
                 setX(value);
                 setZeroAndNegativeFlags(value);
+                if (pageBoundaryCrossed)
+                    totalCycles++;
                 break;
             }
             case "LDX": {
                 int value = fetchOperandValue(mode);
                 setX(value);
                 setZeroAndNegativeFlags(value);
+                if (pageBoundaryCrossed)
+                    totalCycles++;
                 break;
             }
             case "LDY": {
                 int value = fetchOperandValue(mode);
                 setY(value);
                 setZeroAndNegativeFlags(value);
+                if (pageBoundaryCrossed)
+                    totalCycles++;
                 break;
             }
             case "STA": {
                 int addr = getEffectiveAddress(mode);
                 memory.write(addr, getA());
+                // Stores do not incur page crossing penalty
                 break;
             }
             case "STX": {
@@ -518,18 +703,24 @@ public class CPU {
                 setFlag(FLAG_V, ((getA() ^ result) & (value ^ result) & 0x80) != 0);
                 setA(result & 0xFF);
                 setZeroAndNegativeFlags(getA());
+                if (pageBoundaryCrossed)
+                    totalCycles++;
                 break;
             }
             case "SBC", "ISB": {
                 int value;
-                if (instruction.equals("ISB")) {  // or a check on the opcode value
+                if (instruction.equals("ISB")) { // ISB = INC + SBC (RMW)
                     int addr = getEffectiveAddress(mode);
                     int memVal = memory.read(addr);
                     memVal = (memVal + 1) & 0xFF;
                     memory.write(addr, memVal);
                     value = memVal;
+                    // ISB is RMW, so no page crossing penalty on top of the RMW cycles usually?
+                    // ISB cycles in table (e.g. 8) should cover it.
                 } else {
                     value = fetchOperandValue(mode);
+                    if (pageBoundaryCrossed)
+                        totalCycles++;
                 }
                 value ^= 0xFF;
                 int carry = getFlag(FLAG_C) ? 1 : 0;
@@ -545,6 +736,8 @@ public class CPU {
                 int newA = getA() & value;
                 setA(newA);
                 setZeroAndNegativeFlags(newA);
+                if (pageBoundaryCrossed)
+                    totalCycles++;
                 break;
             }
             case "EOR": {
@@ -552,6 +745,8 @@ public class CPU {
                 int newA = getA() ^ value;
                 setA(newA);
                 setZeroAndNegativeFlags(newA);
+                if (pageBoundaryCrossed)
+                    totalCycles++;
                 break;
             }
             case "INY": // Increment Y Register
@@ -563,11 +758,11 @@ public class CPU {
                 setZeroAndNegativeFlags(getX());
                 break;
             case "DEY": // Decrement Y Register
-                setY((getY() - 1) & 0xFF);  // Decrement and wrap around 8-bit
+                setY((getY() - 1) & 0xFF); // Decrement and wrap around 8-bit
                 setZeroAndNegativeFlags(getY()); // Update flags
                 break;
             case "DEX": // Decrement X Register
-                setX((getX() - 1) & 0xFF);  // Decrement and wrap around 8-bit
+                setX((getX() - 1) & 0xFF); // Decrement and wrap around 8-bit
                 setZeroAndNegativeFlags(getX()); // Update flags
                 break;
             // --- Shift / Rotate Operations ---
@@ -648,65 +843,49 @@ public class CPU {
                 break;
             }
             case "SLO": {
-                int addr = getEffectiveAddress(mode);           // Compute effective address based on addressing mode
-                int value = memory.read(addr);                  // Read value from memory
-
-                // Perform ASL (Arithmetic Shift Left)
-                setFlag(FLAG_C, (value & 0x80) != 0);     // Set Carry flag based on bit 7 of original value
-                value = (value << 1) & 0xFF;                    // Shift left and ensure 8-bit result
-                memory.write(addr, value);                      // Write shifted value back to memory
-
-                // ORA: Combine the shifted value with the accumulator
+                int addr = getEffectiveAddress(mode); // Compute effective address based on addressing mode
+                int value = memory.read(addr); // Read value from memory
+                setFlag(FLAG_C, (value & 0x80) != 0); // Set Carry flag based on bit 7 of original value
+                value = (value << 1) & 0xFF; // Shift left and ensure 8-bit result
+                memory.write(addr, value); // Write shifted value back to memory
                 int result = getA() | value;
                 setA(result);
-                setZeroAndNegativeFlags(result);                 // Update Zero and Negative flags
+                setZeroAndNegativeFlags(result); // Update Zero and Negative flags
                 break;
             }
             case "RLA": {
-                int addr = getEffectiveAddress(mode);      // Compute effective address based on addressing mode
-                int value = memory.read(addr);               // Read the value from memory
-
-                // Perform ROL (Rotate Left)
-                boolean oldCarry = getFlag(FLAG_C);          // Save the old Carry flag
-                boolean newCarry = (value & 0x80) != 0;        // Determine new Carry flag from bit 7
+                int addr = getEffectiveAddress(mode); // Compute effective address based on addressing mode
+                int value = memory.read(addr); // Read the value from memory
+                boolean oldCarry = getFlag(FLAG_C); // Save the old Carry flag
+                boolean newCarry = (value & 0x80) != 0; // Determine new Carry flag from bit 7
                 value = ((value << 1) & 0xFF) | (oldCarry ? 1 : 0); // Rotate left including the old carry
-                setFlag(FLAG_C, newCarry);                   // Update the Carry flag
-                memory.write(addr, value);                   // Write the rotated value back to memory
-
-                // AND the accumulator with the rotated value
+                setFlag(FLAG_C, newCarry); // Update the Carry flag
+                memory.write(addr, value); // Write the rotated value back to memory
                 int result = getA() & value;
                 setA(result);
-                setZeroAndNegativeFlags(result);             // Update Zero and Negative flags
+                setZeroAndNegativeFlags(result); // Update Zero and Negative flags
                 break;
             }
             case "SRE": {
-                int addr = getEffectiveAddress(mode);  // Compute effective address based on addressing mode
-                int value = memory.read(addr);           // Read value from memory
-
-                // Perform LSR (Logical Shift Right)
-                setFlag(FLAG_C, (value & 0x01) != 0);      // Set Carry flag from bit 0 of original value
-                value = (value >> 1) & 0xFF;               // Logical shift right, ensuring 8-bit result
-                memory.write(addr, value);               // Write shifted value back to memory
-
-                // EOR: Exclusive OR the shifted value with the accumulator
+                int addr = getEffectiveAddress(mode); // Compute effective address based on addressing mode
+                int value = memory.read(addr); // Read value from memory
+                setFlag(FLAG_C, (value & 0x01) != 0); // Set Carry flag from bit 0 of original value
+                value = (value >> 1) & 0xFF; // Logical shift right, ensuring 8-bit result
+                memory.write(addr, value); // Write shifted value back to memory
                 int result = getA() ^ value;
                 setA(result);
-                setZeroAndNegativeFlags(result);         // Update Zero and Negative flags
+                setZeroAndNegativeFlags(result); // Update Zero and Negative flags
                 break;
             }
             case "RRA": {
-                int addr = getEffectiveAddress(mode);      // Compute effective address using the addressing mode
-                int value = memory.read(addr);               // Read value from memory
+                int addr = getEffectiveAddress(mode); // Compute effective address using the addressing mode
+                int value = memory.read(addr); // Read value from memory
+                boolean oldCarry = getFlag(FLAG_C); // Save the old carry flag
+                int newCarryBit = value & 0x01; // Bit 0 becomes the new carry
+                value = (value >> 1) | (oldCarry ? 0x80 : 0); // Rotate right: shift, then add old carry into bit 7
+                setFlag(FLAG_C, newCarryBit != 0); // Update carry flag
+                memory.write(addr, value); // Write the rotated value back to memory
 
-                // Perform ROR (rotate right)
-                boolean oldCarry = getFlag(FLAG_C);          // Save the old carry flag
-                int newCarryBit = value & 0x01;                // Bit 0 becomes the new carry
-                value = (value >> 1) | (oldCarry ? 0x80 : 0);    // Rotate right: shift, then add old carry into bit 7
-                setFlag(FLAG_C, newCarryBit != 0);             // Update carry flag
-                memory.write(addr, value);                   // Write the rotated value back to memory
-
-                // Now perform ADC with the rotated value.
-                // Note: ADC uses the processor’s current carry flag (which was set by the ROR above).
                 int a = getA();
                 int c = getFlag(FLAG_C) ? 1 : 0;
                 int result = a + value + c;
@@ -722,6 +901,8 @@ public class CPU {
                 int result = getA() - value;
                 setFlag(FLAG_C, getA() >= value);
                 setZeroAndNegativeFlags(result);
+                if (pageBoundaryCrossed)
+                    totalCycles++;
                 break;
             }
             case "CPY": {
@@ -729,6 +910,15 @@ public class CPU {
                 int result = getY() - value;
                 setFlag(FLAG_C, getY() >= value);
                 setZeroAndNegativeFlags(result);
+                // CPY/CPX can have page crossing? Usually yes if AbsX/AbsY/IndY.
+                // But CPY supports Immed, ZP, Abs. No indexed.
+                // CPX supports Immed, ZP, Abs. No indexed.
+                // Wait, check matrix.
+                // C0: CPY Imm
+                // C4: CPY ZP
+                // CC: CPY Abs
+                // No CPY ZP,X or Abs,X.
+                // So no crossing possible.
                 break;
             }
             case "CPX": {
@@ -744,25 +934,24 @@ public class CPU {
                 setFlag(FLAG_Z, (getA() & value) == 0);
                 setFlag(FLAG_N, (value & 0x80) != 0);
                 setFlag(FLAG_V, (value & 0x40) != 0);
-                // Adjust PC manually for BIT (since it does not use our normal increment)
                 PC += mode.equals("ZeroPage") ? 2 : 3;
                 return;
             }
             // --- Register Transfers ---
             case "TAY": // Transfer A to Y
-                setY(getA());  // Copy A register to Y
+                setY(getA()); // Copy A register to Y
                 setZeroAndNegativeFlags(getY()); // Update flags
                 break;
             case "TAX": // Transfer A to X
-                setX(getA());  // Copy A register to X
+                setX(getA()); // Copy A register to X
                 setZeroAndNegativeFlags(getX()); // Update flags
                 break;
             case "TYA": // Transfer Y to A
-                setA(getY());  // Copy Y register to A
+                setA(getY()); // Copy Y register to A
                 setZeroAndNegativeFlags(getA()); // Update flags
                 break;
             case "TXA": // Transfer X to A
-                setA(getX());  // Copy X register to A
+                setA(getX()); // Copy X register to A
                 setZeroAndNegativeFlags(getA()); // Update flags
                 break;
             case "TSX": // Transfer Stack Pointer to X
@@ -770,20 +959,34 @@ public class CPU {
                 setZeroAndNegativeFlags(getX()); // Update flags
                 break;
             case "TXS": // Transfer X to Stack Pointer
-                setSP(getX());  // Set Stack Pointer to X register
+                setSP(getX()); // Set Stack Pointer to X register
                 break;
             case "TSY": // Transfer Stack Pointer to Y (Unofficial Opcode)
                 setY(getSP()); // Copy Stack Pointer (SP) to Y register
                 setZeroAndNegativeFlags(getY()); // Update flags
                 break;
             // --- Flag Operations ---
-            case "CLC": setFlag(FLAG_C, false); break;
-            case "SEC": setFlag(FLAG_C, true); break;
-            case "CLD": setFlag(FLAG_D, false); break;
-            case "SED": setFlag(FLAG_D, true); break;
-            case "CLI": setFlag(FLAG_I, false); break;
-            case "SEI": setFlag(FLAG_I, true); break;
-            case "CLV": setFlag(FLAG_V, false); break;
+            case "CLC":
+                setFlag(FLAG_C, false);
+                break;
+            case "SEC":
+                setFlag(FLAG_C, true);
+                break;
+            case "CLD":
+                setFlag(FLAG_D, false);
+                break;
+            case "SED":
+                setFlag(FLAG_D, true);
+                break;
+            case "CLI":
+                setFlag(FLAG_I, false);
+                break;
+            case "SEI":
+                setFlag(FLAG_I, true);
+                break;
+            case "CLV":
+                setFlag(FLAG_V, false);
+                break;
             // --- Memory Operations ---
             case "PHA":
                 pushStack(getA());
@@ -812,8 +1015,6 @@ public class CPU {
                 int addr = getEffectiveAddress(mode);
                 int value = (memory.read(addr) - 1) & 0xFF; // Decrement and wrap around 8-bit
                 memory.write(addr, value);
-
-                // Perform CMP with Accumulator
                 int cmpResult = getA() - value;
                 setFlag(FLAG_C, getA() >= value);
                 setZeroAndNegativeFlags(cmpResult);

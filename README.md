@@ -4,11 +4,24 @@ A Java-based NES emulator built with Maven. This project aims to faithfully recr
 
 ## Features
 
-- **CPU Emulation:** Accurate reproduction of the 6502 CPU behavior.
-- **Graphics & Audio:** Emulation of NES video and sound hardware.
-- **ROM Loading:** Load and run your favorite NES game ROMs.
-- **Test Driven:** Comprehensive test suite using JUnit for reliable code quality.
+- **CPU Emulation:** Cycle-accurate 6502 CPU behavior (official opcodes + illegal opcodes).
+- **PPU Emulation:** Cycle-accurate rendering pipeline, 8x8/8x16 sprites, and hardware scrolling (Loopy's Logic).
+- **Mapper Support:**
+  - **Mapper 0 (NROM):** Super Mario Bros, Donkey Kong, etc.
+  - **Mapper 1 (MMC1):** The Legend of Zelda, Metroid, etc. (Supports Banking & Dynamic Mirroring).
+- **Audio:** None (IO Registers mapped but no sound processing yet).
+- **Controls:** Keyboard mapping for Player 1.
 - **Cross-Platform:** Runs on any system with Java installed.
+
+## Controls
+
+| NES Button | Keyboard Key |
+|------------|--------------|
+| **A**      | `Z`          |
+| **B**      | `X`          |
+| **Start**  | `Enter`      |
+| **Select** | `Shift`      |
+| **D-Pad**  | Arrow Keys   |
 
 ## Getting Started
 
@@ -26,15 +39,17 @@ A Java-based NES emulator built with Maven. This project aims to faithfully recr
    git clone https://github.com/ralphwarrand/java-nes-emulator.git
    cd java-nes-emulator
    ```
-2. **Build the project using Maven:**
-   
-   ```bash
-   mvn clean package
-   ```
+2. **Additional Setup:**
+   Ensure you have ROM files to test with. A few resources are included in `/resources`.
 
-### Runing the Emulator
+### Running the Emulator
 
-After building, run the emulator with the following command:
-   ```bash
-   java -jar target/java-nes-emulator-1.0-SNAPSHOT.jar
-   ```
+For convenience, use the included batch script which handles compilation and execution:
+
+```bash
+.\run.bat path_to_rom/rom_name.nes
+```
+Or for the default test ROM:
+```bash
+.\run.bat
+```
