@@ -20,8 +20,12 @@ public class CPUExecutionTest {
 
     private static String cleanLogLine(String logLine) {
         int ppuIndex = logLine.indexOf("PPU:");
-        if (ppuIndex != -1) {
-            return logLine.substring(0, ppuIndex).trim();
+        int cycIndex = logLine.indexOf("CYC:");
+
+        if (ppuIndex != -1 && cycIndex != -1) {
+            String part1 = logLine.substring(0, ppuIndex).trim();
+            String part2 = logLine.substring(cycIndex).trim();
+            return part1 + " " + part2;
         }
         return logLine.trim();
     }
