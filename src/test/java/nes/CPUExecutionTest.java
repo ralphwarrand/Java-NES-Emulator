@@ -44,6 +44,7 @@ public class CPUExecutionTest {
             Memory memory = new Memory("resources/nestest.nes");
             CPU cpu = new CPU(memory);
             cpu.reset(0xC000); // Set CPU to the correct starting point
+            cpu.setLoggingEnabled(true); // Enable logging for output capture
 
             // Load the reference log
             List<String> referenceLog = loadReferenceLog("resources/nestest.log.txt");
@@ -56,7 +57,7 @@ public class CPUExecutionTest {
                 PrintStream originalOut = System.out;
                 System.setOut(testOut);
 
-                cpu.executeNextInstruction();  // Execute one CPU instruction
+                cpu.executeNextInstruction(); // Execute one CPU instruction
 
                 // Restore original System.out
                 System.setOut(originalOut);
