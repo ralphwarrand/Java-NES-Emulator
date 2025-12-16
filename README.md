@@ -53,3 +53,7 @@ Or for the default test ROM:
 ```bash
 .\run.bat
 ```
+
+### Example
+
+https://github.com/user-attachments/assets/3d703864-d4fd-41b2-9020-a433d6b10929
