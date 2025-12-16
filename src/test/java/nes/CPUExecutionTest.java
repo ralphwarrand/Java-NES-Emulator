@@ -42,6 +42,42 @@ public class CPUExecutionTest {
     }
 
     @Test
+    public void testIncAbsX_BusActivity() {
+        // Setup: INC $10FF, X (Where X=1) -> Target $1100.
+        // Opcode: FE FF 10
+        // Memory[$1100] = 0x55.
+        // Expected:
+        // T1: Fetch FE (PC=$0000)
+        // T2: Fetch FF (PC=$0001)
+        // T3: Fetch 10 (PC=$0002)
+        // T4: Read Invalid: $1000 (Low+X | High<<8) = (FF+1)|1000 = 00|1000 = $1000.
+        // T5: Read Valid: $1100 (Value 0x55)
+        // T6: Write Old: $1100 (Value 0x55)
+        // T7: Write New: $1100 (Value 0x56)
+
+        Memory memory = new Memory(); // Assuming a default constructor for Memory
+        CPU cpu = new CPU(memory);
+        cpu.reset();
+        cpu.setReg(CPU.Register.X, (byte) 1); // X = 1
+
+        memory.ram[0] = (byte) 0xFE;
+        memory.ram[1] = (byte) 0xFF;
+        memory.ram[2] = (byte) 0x10;
+
+        memory.ram[0x1000] = (byte) 0xAA; // Invalid addr content
+        memory.ram[0x1100] = (byte) 0x55; // Valid addr content
+
+        // Execute one instruction
+        cpu.executeNextInstruction();
+
+        // Assertions are hard without cycle-stepping.
+        // But we can check final state and total cycles.
+        assertEquals(7, cpu.getTotalCycles());
+        assertEquals(0x56, memory.read(0x1100));
+        assertEquals(0x56, memory.openBus); // Last value on bus
+    }
+
+    @Test
     public void testCPUExecutionMatchesReferenceLog() {
         try {
             // Setup memory and CPU

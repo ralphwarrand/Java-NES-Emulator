@@ -59,26 +59,30 @@ public class PPU {
 
     // === Register Interfaces ===
 
-    public int readRegister(int addr) {
+    private int ioBus = 0; // PPU Open Bus (last written/read value)
+
+    public int readRegister(int addr, int openBus) {
+        int res = openBus; // Default to open bus
+
         switch (addr) {
-            case 0x2000:
-                return 0; // Write only
-            case 0x2001:
-                return 0; // Write only
+            case 0x2000: // Write only
+            case 0x2001: // Write only
+            case 0x2003: // Write only
+            case 0x2005: // Write only
+            case 0x2006: // Write only
+                break; // Return ioBus
+
             case 0x2002:
                 // Reading Status resets Write Latch and clears VBlank
-                int res = (status & 0xE0) | (bufferData & 0x1F); // Noise from buffer
+                // Status (7-5) + PPU Open Bus (4-0)
+                res = (status & 0xE0) | (ioBus & 0x1F);
                 status &= ~0x80;
                 w = 0;
-                return res;
-            case 0x2003:
-                return 0; // Write only
+                break;
             case 0x2004:
-                return oam[oamAddr] & 0xFF; // Usually not readable
-            case 0x2005:
-                return 0; // Write only
-            case 0x2006:
-                return 0; // Write only
+                res = oam[oamAddr] & 0xFF; // Usually not readable on standard NES, but we allow it
+                // Note: Real hardware OAM read is unreliable/complex but typically updates bus
+                break;
             case 0x2007:
                 int data = bufferData;
                 bufferData = readVram(v);
@@ -88,12 +92,16 @@ public class PPU {
                     data = bufferData;
 
                 v += ((ctrl & 0x04) != 0) ? 32 : 1;
-                return data;
+                res = data;
+                break;
         }
-        return 0;
+
+        ioBus = res; // Update bus with what was read
+        return res;
     }
 
     public void writeRegister(int addr, int val) {
+        ioBus = val; // Update PPU Open Bus Latch
         switch (addr) {
             case 0x2000: // Control
                 ctrl = val;
@@ -140,6 +148,26 @@ public class PPU {
                 v += ((ctrl & 0x04) != 0) ? 32 : 1;
                 break;
         }
+    }
+
+    public boolean willNmiFire(int cpuCycles) {
+        // NMI enabled?
+        if ((ctrl & 0x80) == 0)
+            return false;
+
+        // Calculate ticks until VBlank (Scanline 241, Cycle 1)
+        long ticksRemaining = -1;
+
+        if (scanline < 241) {
+            ticksRemaining = ((240 - scanline) * 341L) + (341 - cycle) + 1;
+        } else if (scanline == 261) { // Pre-render wrap-around
+            ticksRemaining = (341 - cycle) + (241 * 341L) + 1;
+        }
+
+        if (ticksRemaining != -1) {
+            return ticksRemaining <= (cpuCycles * 3L);
+        }
+        return false;
     }
 
     // === Execution ===
@@ -275,6 +303,13 @@ public class PPU {
                 int sy = oam[index] & 0xFF; // Y Position
                 int height = ((ctrl & 0x20) != 0) ? 16 : 8;
                 int diffY = scanline - sy;
+                // Note: Sprites are delayed by one scanline on real hardware (Y+1)
+                // However, commonly OAM Y means "render on next line".
+                // If sy=0, it draws on scanline 1.
+                // Our scanline 0-239.
+                // If we want it on scanline 1, then at scanline=1, diffY should be 0.
+                // 1 - 0 = 1. We need -1.
+                diffY--; // Apply 1 scanline delay
 
                 if (diffY >= 0 && diffY < height) {
                     int id = oam[index + 1] & 0xFF;
@@ -527,5 +562,51 @@ public class PPU {
                 break;
         }
         return address;
+    }
+
+    // === Debugger Helpers ===
+
+    // Get PPU Palette
+    public int getColorFromPaletteRam(int palette, int pixel) {
+        int index = paletteRam[palette * 4 + pixel] & 0x3F;
+        return PALETTE_LOOKUP[index];
+    }
+
+    public int[] getPatternTable(int i, int palette) {
+        // i: 0 or 1 (Left or Right Pattern Table)
+        // Returns 128x128 pixel array (4096 tiles * 8x8 pixels? No, 256 tiles * 8x8 =
+        // 128x128)
+        // 16x16 tiles = 256 tiles per table.
+        // Each tile is 8x8 pixels.
+        // Image size: 128 x 128.
+
+        int[] pixels = new int[128 * 128];
+
+        for (int tileY = 0; tileY < 16; tileY++) {
+            for (int tileX = 0; tileX < 16; tileX++) {
+                int offset = tileY * 256 + tileX * 16; // Tile Index * 16 bytes
+                int tableOffset = i * 4096;
+
+                for (int row = 0; row < 8; row++) {
+                    int tileLsb = readVram(tableOffset + offset + row);
+                    int tileMsb = readVram(tableOffset + offset + row + 8);
+
+                    for (int col = 0; col < 8; col++) {
+                        int pixel = ((tileLsb & 0x01) << 0) | ((tileMsb & 0x01) << 1);
+                        tileLsb >>= 1;
+                        tileMsb >>= 1;
+
+                        int c = getColorFromPaletteRam(palette, pixel);
+
+                        // Calculate pixel pos in final image
+                        int px = tileX * 8 + (7 - col);
+                        int py = tileY * 8 + row;
+
+                        pixels[py * 128 + px] = c;
+                    }
+                }
+            }
+        }
+        return pixels;
     }
 }

@@ -1,8 +1,10 @@
+import nes.NES;
 import nes.CPU;
-import nes.Controller;
+import nes.EmulatorRunner;
 import nes.Memory;
-import nes.PPU;
+import nes.gui.DebuggerWindow;
 import nes.gui.Display;
+import javax.swing.SwingUtilities;
 
 import java.io.*;
 import java.util.*;
@@ -23,6 +25,7 @@ public class Main {
             System.out.println("Beginning Verification against nestest.log...");
             Memory testMemory = new Memory("resources/nestest.nes");
             CPU testCpu = new CPU(testMemory);
+            testMemory.setCPU(testCpu);
             testCpu.reset(0xC000); // Reset CPU to Start of Test (Automated)
             testCpu.setLoggingEnabled(true);
 
@@ -59,73 +62,38 @@ public class Main {
 
     private static void runGameLoop(String romPath) {
         try {
-            // Initialize Real Components
-            System.out.println("Loading ROM: " + romPath);
-            Memory memory = new Memory(romPath);
+            // GUI Initialization (EDT recommended, but simple here)
             Display display = new Display();
-            PPU ppu = new PPU(display);
-            ppu.setMemory(memory); // Enable CHR Banking
-            Controller controller = new Controller();
 
-            // Connect components
-            memory.setPPU(ppu);
-            memory.setController1(controller);
-            display.setController(controller);
+            // Core Initialization
+            NES nes = new NES(display);
+            nes.loadROM(romPath);
 
-            CPU cpu = new CPU(memory);
+            // Connect Controller
+            // Display already has key listener, needs to feed NES controller
+            display.setController(nes.getController()); // Controller created inside NES now
 
-            // Start from standard reset vector
-            cpu.reset();
-            cpu.setLoggingEnabled(false); // Disable logging for speed
+            // Start Emulation Thread
+            System.out.println("Starting Emulation Thread...");
+            EmulatorRunner runner = new EmulatorRunner(nes);
 
-            System.out.println("Emulator started. Target: 60 FPS.");
+            // Initial Reset
+            nes.reset();
 
-            // 60 FPS Logic
-            long targetFrameTime = 1_000_000_000 / 60; // Nanoseconds
+            // Start
+            runner.start();
 
-            while (true) {
-                long frameStart = System.nanoTime();
+            System.out.println("Emulator running.");
 
-                // Run emulation until one frame is generated
-                while (!ppu.frameComplete) {
-                    // Execute ONE CPU instruction
-                    long startInfo = cpu.getTotalCycles();
-                    cpu.executeNextInstruction();
-                    long cpuCycles = cpu.getTotalCycles() - startInfo;
-
-                    // Run PPU for 3x CPU cycles
-                    for (int i = 0; i < cpuCycles * 3; i++) {
-                        ppu.tick();
-                    }
-
-                    // Check NMI
-                    if (ppu.nmiOccurred) {
-                        ppu.nmiOccurred = false;
-                        cpu.nmi();
-                    }
-                }
-
-                // End of Frame
-                ppu.frameComplete = false;
-
-                // Time Synchronization
-                long frameTime = System.nanoTime() - frameStart;
-                long sleepTime = targetFrameTime - frameTime;
-
-                if (sleepTime > 0) {
-                    try {
-                        Thread.sleep(sleepTime / 1_000_000, (int) (sleepTime % 1_000_000));
-                    } catch (InterruptedException e) {
-                        Thread.currentThread().interrupt();
-                    }
-                }
-
-                // Yield occasionally to ensure UI responsiveness if load is high
-                Thread.onSpinWait();
-            }
+            // Launch Debugger
+            SwingUtilities.invokeLater(() -> {
+                DebuggerWindow debugger = new DebuggerWindow(nes, runner);
+                debugger.setVisible(true);
+            });
 
         } catch (IOException e) {
-            System.err.println("Error: " + e.getMessage());
+            System.err.println("Error loading ROM: " + e.getMessage());
+            e.printStackTrace();
         }
     }
 

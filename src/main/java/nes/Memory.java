@@ -3,12 +3,18 @@ package nes;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.List;
+import nes.hooks.MemoryHook;
 
 public class Memory {
     // System Memory
-    private final byte[] ram = new byte[2048]; // 2KB Internal RAM
+    final byte[] ram = new byte[2048]; // 2KB Internal RAM
     private final byte[] saveRam = new byte[8192]; // 8KB Battery Backed RAM
+
     private final byte[] expansionRom = new byte[8192];
+
+    int openBus = 0; // Last value on data bus
 
     // Components
     private final int[] apuIoRegisters = new int[32]; // $4000-$401F
@@ -32,6 +38,39 @@ public class Memory {
 
     private PPU ppu;
     private Controller controller1;
+    private APU apu;
+
+    public void setAPU(APU apu) {
+        this.apu = apu;
+    }
+
+    // === Hooks ===
+    private final List<MemoryHook> hooks = new ArrayList<>();
+
+    public void addHook(MemoryHook hook) {
+        hooks.add(hook);
+    }
+
+    public void removeHook(MemoryHook hook) {
+        hooks.remove(hook);
+    }
+
+    public void clearHooks() {
+        hooks.clear();
+    }
+
+    public boolean isNmiAsserted() {
+        return ppu != null && ppu.nmiOccurred;
+    }
+
+    public void consumeNmi() {
+        if (ppu != null)
+            ppu.nmiOccurred = false;
+    }
+
+    public boolean willNmiFire(int cpuCycles) {
+        return ppu != null && ppu.willNmiFire(cpuCycles);
+    }
 
     public Memory(String romPath) throws IOException {
         byte[] romData = Files.readAllBytes(Paths.get(romPath));
@@ -70,6 +109,13 @@ public class Memory {
         java.util.Arrays.fill(apuIoRegisters, 0xFF);
     }
 
+    public Memory() {
+        // Default for testing
+        prgRom = new byte[1024];
+        chrRom = new byte[1024];
+        java.util.Arrays.fill(apuIoRegisters, 0xFF);
+    }
+
     public void setPPU(PPU ppu) {
         this.ppu = ppu;
     }
@@ -82,48 +128,76 @@ public class Memory {
 
     public int read(int addr) {
         int address = addr & 0xFFFF;
+        int value = openBus; // Default to open bus
 
         if (address < 0x2000) { // RAM
-            return ram[address & 0x07FF] & 0xFF;
+            value = ram[address & 0x07FF] & 0xFF;
 
         } else if (address < 0x4000) { // PPU
-            return ppu != null ? ppu.readRegister(address & 0x2007) : 0;
+            value = ppu != null ? ppu.readRegister(address & 0x2007, openBus) : openBus;
 
         } else if (address < 0x4020) { // IO
             if (address == 0x4016)
-                return controller1 != null ? controller1.read() : 0;
-            if (address == 0x4017)
-                return 0; // Controller 2 (Not connected)
-            if (address == 0x4014)
-                return 0;
-            return apuIoRegisters[address & 0x1F];
+                value = (openBus & 0xE0) | (controller1 != null ? controller1.read() : 0);
+            else if (address == 0x4017)
+                value = (openBus & 0xE0) | 0x00; // Controller 2 (Not connected)
+            else if (address == 0x4014) // OAMDMA usually Open Bus on read
+                value = openBus;
+            else {
+                // Route to APU
+                int val = apu != null ? apu.readRegister(address, openBus) : -1;
+                if (val != -1)
+                    value = val;
+            }
 
         } else if (address < 0x6000) { // Expansion
-            return expansionRom[address - 0x4020] & 0xFF;
+            if (mapperID != 0) { // Only read if mapper supports it (MMC1 etc)
+                value = expansionRom[address - 0x4020] & 0xFF;
+            }
 
         } else if (address < 0x8000) { // Save RAM
-            return saveRam[address - 0x6000] & 0xFF;
+            if (mapperID != 0) {
+                value = saveRam[address - 0x6000] & 0xFF;
+            }
 
-        } else { // PRG-ROM ($8000-$FFFF)
-            return readPrg(address);
+        } else { // PRG-ROM $8000-$FFFF
+            int prg = readPrg(address);
+            if (prg != -1)
+                value = prg;
         }
+
+        openBus = value; // Bus decay/update
+
+        // Notify Hooks
+        if (!hooks.isEmpty()) {
+            for (MemoryHook hook : hooks) {
+                hook.onRead(addr, value);
+            }
+        }
+
+        return value;
     }
 
     public void write(int addr, int val) {
         int address = addr & 0xFFFF;
         int value = val & 0xFF;
+        openBus = value; // Bus update (Driver is CPU)
 
-        if (address < 0x2000) {
+        // Notify Hooks
+        if (!hooks.isEmpty()) {
+            for (MemoryHook hook : hooks) {
+                hook.onWrite(address, value);
+            }
+        }
+
+        if (address < 0x2000) { // RAM
             ram[address & 0x07FF] = (byte) value;
 
-        } else if (address < 0x4000) {
+        } else if (address < 0x4000) { // PPU
             if (ppu != null)
                 ppu.writeRegister(address & 0x2007, value);
 
-        } else if (address < 0x4020) {
-            if (address == 0x4015) {
-                // $4015 Status
-            }
+        } else if (address < 0x4020) { // APU/IO
             if (address == 0x4014) {
                 dmaTransfer(value);
                 return;
@@ -133,7 +207,11 @@ public class Memory {
                     controller1.write(value);
                 return;
             }
-            apuIoRegisters[address & 0x1F] = value;
+
+            // Route to APU
+            if (apu != null) {
+                apu.writeRegister(address, value);
+            }
 
         } else if (address < 0x6000) {
             // Expansion
@@ -188,7 +266,7 @@ public class Memory {
                 return prgRom[offset] & 0xFF;
         }
 
-        return 0;
+        return -1;
     }
 
     private void writeMapper(int address, int value) {
@@ -299,12 +377,15 @@ public class Memory {
         }
     }
 
+    private CPU cpu;
+
+    public void setCPU(CPU cpu) {
+        this.cpu = cpu;
+    }
+
     private void dmaTransfer(int page) {
-        int addr = page << 8;
-        for (int i = 0; i < 256; i++) {
-            int data = read(addr + i);
-            if (ppu != null)
-                ppu.oam[i] = (byte) data;
+        if (cpu != null) {
+            cpu.triggerDMA(page);
         }
     }
 }
